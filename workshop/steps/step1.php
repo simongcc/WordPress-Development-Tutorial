@@ -3,12 +3,22 @@
 // Copy the code blow.
 
 // Step 1.
-// Remove the original title, rating and product images output.
-add_action(
-	'init',
-	function() {
-		remove_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_title', 5 );
-		remove_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_rating', 10 );
-		remove_action( 'woocommerce_before_single_product_summary', 'woocommerce_show_product_images', 20 );
-	}
-);
+// Remove default stock information in default location.
+add_filter( 'woocommerce_get_stock_html', '__return_false', 999, 2 );
+
+// Remove on-sale badge.
+add_filter( 'woocommerce_sale_flash', '__return_false', 999, 2 );
+
+// Remove product meta - sku.
+add_filter( 'wc_product_sku_enabled', '__return_false' );
+
+// Remove all product meta instead of adding template for simple demonstration sake.
+add_action( 'woocommerce_product_meta_start', function() {
+	ob_start();
+} );
+
+add_action( 'woocommerce_product_meta_end', function() {
+	// $content = ob_get_contents();
+
+	ob_end_clean();
+} );

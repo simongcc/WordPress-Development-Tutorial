@@ -1,6 +1,207 @@
 <?php
+/**
+ * @package Workshop_Shop_DIY
+ * @version 1.0.1
+ */
+/**
+ * ZStore style single product page for WooCommerce.
+ */
 
-// Copy the code blow.
+// Preparation.
+// Show/Hide product settings in WooCommerce > Settings > Products Tab > Inventory.
+
+// Follow ZStore's single product page's image size - 600px * 600px.
+// This will affect thumbnail generation, so do it before importing any sample products.
+add_filter( 'storefront_woocommerce_args', function( $settings ) {
+	$settings['single_image_width'] = 600;
+	return $settings;
+});
+
+// Extend the width of the content area so that the gallery image is approx. 600px * 600px
+add_action( 'wp_head', function() {
+ ?>
+<style>
+/* Make the default storefront product page content area displaying in full width */
+@media (min-width: 768px) {
+	.right-sidebar #primary.content-area {
+		width: 100%;
+	}
+
+	.single-product #primary div.product .woocommerce-product-gallery {
+		width: 49%;
+	}
+
+	.single-product #primary div.product .summary {
+		width: calc(100% - 55%);
+	}
+
+	.col-full {
+		max-width: 74%;
+	}
+
+	.flex-control-nav {
+		/* display: flex;
+    	justify-content: space-between; */
+	}
+}
+</style>
+ <?php
+} );
+
+if( !function_exists('sing_wp_remove_storefront_sidebar') ) {
+	/**
+	 * Remove storefront sidebar.
+	 */
+	function sing_wp_remove_storefront_sidebar() {
+		if ( is_woocommerce() || is_checkout() ) {
+			remove_action( 'storefront_sidebar', 'storefront_get_sidebar', 10 );
+		}
+	}	
+	add_action( 'get_header', 'sing_wp_remove_storefront_sidebar' );
+}
+
+
+// Step 1.
+// Remove default stock information in default location.
+add_filter( 'woocommerce_get_stock_html', '__return_false', 999, 2 );
+
+// Remove on-sale badge.
+add_filter( 'woocommerce_sale_flash', '__return_false', 999, 2 );
+
+// Remove product meta - sku.
+add_filter( 'wc_product_sku_enabled', '__return_false' );
+
+// Remove all product meta instead of adding template for simple demonstration sake.
+add_action( 'woocommerce_product_meta_start', function() {
+	ob_start();
+} );
+
+add_action( 'woocommerce_product_meta_end', function() {
+	// $content = ob_get_contents();
+
+	ob_end_clean();
+} );
+
+// Step 2.
+// Modify the layout of title and rating.
+// Group the title and rating together under a common container.
+remove_action( 'woocommerce_single_product_summary', 'woocommerce_template_single_rating', 10 );
+add_action( 'woocommerce_single_product_summary', function() {
+	echo '<div class="title-container">';
+}, 4);
+
+add_action( 'woocommerce_single_product_summary', function(){
+	global $product;
+
+	if ( ! wc_review_ratings_enabled() ) {
+		return;
+	}
+
+	$rating_count = $product->get_rating_count();
+	$average      = $product->get_average_rating();
+
+	if ( $rating_count > 0 ) : ?>
+
+		<div class="woocommerce-product-rating">
+			<?php echo wc_get_rating_html( $average, $rating_count ); // WPCS: XSS ok. ?>
+		</div>
+
+	<?php endif; ?>
+	</div><?php
+}, 6 );
+
+// Update the layout for the title and rating.
+add_action( 'wp_head', function() {
+	?>
+   <style>
+   /* Make the default storefront product page content area displaying in full width */
+   @media (min-width: 768px) {
+	   #primary .title-container {
+		   display: flex;
+		   justify-content: space-between;
+	   }
+
+	   #primary .title-container .product_title {
+		   font-weight: 700;
+		   font-size: 28px;
+		   line-height: 1.8;
+	   }
+
+	   #primary .title-container .woocommerce-product-rating {
+		   margin-top: 0;
+		   border-left: 1px dotted #d5d5d5;
+		   padding: 4px 4px 0 16px;
+		   height: 56px;
+	   }
+   }
+   </style>
+	<?php
+} );
+
+// Step 3.
+// Add dimension and weight.
+add_action( 'woocommerce_single_product_summary', function(){
+	global $product;
+
+	$length = $product->get_length();
+	$width = $product->get_width();
+	$height = $product->get_height();
+	?>
+	<div class="physical-info-container">
+		<span class="dimension">尺寸：<?php printf( '%scm * %scm * %scm', $length, $width, $height );?></span>
+		<span class="weight">重量：<?php echo $product->get_weight(); ?>kg</span>
+	</div>
+	<?php
+	
+}, 8 );
+
+// Update the layout for the title and rating.
+add_action( 'wp_head', function() {
+	?>
+   <style>
+   /* Make the default storefront product page content area displaying in full width */
+   @media (min-width: 768px) {
+	   #primary .physical-info-container {
+		background: #ebebeb;
+		font-size: 14px;
+		display: inline-block;
+		padding: 2px 6px;
+	   }
+
+	   #primary .physical-info-container span:last-of-type {
+		margin-left: 1rem;
+	   }
+   }
+   </style>
+	<?php
+} );
+
+// Step 4.
+// Update the price format.
+add_filter( 'woocommerce_format_sale_price', function( $price, $regular_price, $sale_price ){
+	$price = '<ins>' . ( is_numeric( $sale_price ) ? wc_price( $sale_price ) : $sale_price ) . '</ins><del aria-hidden="true">' . ( is_numeric( $regular_price ) ? wc_price( $regular_price ) : $regular_price ) . '</del>';
+
+	return $price;
+}, 10, 3);
+
+// Update the layout for the price.
+add_action( 'wp_head', function() {
+	?>
+   <style>
+   /* Make the default storefront product page content area displaying in full width */
+   @media (min-width: 768px) {
+	   #primary .price ins {
+		   font-size: 28px;
+		   font-weight: 700;
+	   }
+
+	   #primary .price del {
+		margin-left: 8px;
+	   }
+   }
+   </style>
+	<?php
+} );
 
 // Step 5
 // Update quantity control.
